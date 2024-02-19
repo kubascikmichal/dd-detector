@@ -5,29 +5,24 @@
 #include "string.h"
 #include "string"
 #include <cstring>
-#include "pthread.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 using namespace std;
 
 class SharedData
 {
 private:
-    string ip;
-    int fps;
-    pthread_mutex_t data_mutex;
-
+    SemaphoreHandle_t mSemaphoredB;
+    SemaphoreHandle_t mSemaphoreStats;
+    float actual_dB = 0;
+    uint32_t totalyAbove = 0;
+    uint32_t afterRestartAbove = 0;
 public:
     SharedData();
     ~SharedData();
-
-    bool setIp(string p_ip);
-    bool setFPS(int p_FPS);
-
-    void mutex_lock();
-    void mutex_unlock();
-
-    string getIP();
-    int getFPS();
+    float get_dB();
+    bool set_dB(float dB);
 };
 
 #endif
