@@ -34,14 +34,20 @@ public:
     static esp_err_t get_actual_dB(httpd_req_t *req);
     static const httpd_uri_t getActualDB;
 
-    static httpd_uri_t getMAC;
     static esp_err_t get_MAC(httpd_req_t *req);
+    static const httpd_uri_t getMAC;
 
-    static httpd_uri_t getSettings;
     static esp_err_t get_settings(httpd_req_t *req);
+    static const httpd_uri_t getSettings;
 
-    static httpd_uri_t setSettings;
     static esp_err_t set_settings(httpd_req_t *req);
+    static const httpd_uri_t setSettings;
+
+    static esp_err_t get_total(httpd_req_t *req);
+    static const httpd_uri_t getTotal;
+
+    static esp_err_t get_last(httpd_req_t *req);
+    static const httpd_uri_t getLast;
 
     bool init();
 

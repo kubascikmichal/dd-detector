@@ -87,15 +87,9 @@ const httpd_uri_t HTTP_Server::getActualDB = {
     .user_ctx = NULL,
 };
 
-httpd_uri_t HTTP_Server::getMAC{
-    .uri = "/getMAC",
-    .method = HTTP_GET,
-    .handler = HTTP_Server::get_MAC,
-    .user_ctx = NULL};
-
 esp_err_t HTTP_Server::get_MAC(httpd_req_t *req)
 {
-    printf("get settings\n\r");
+    printf("get MAC\n\r");
     cJSON *getMAC = cJSON_CreateObject();
     uint8_t MAC[6];
     esp_efuse_mac_get_default(MAC);
@@ -113,10 +107,10 @@ esp_err_t HTTP_Server::get_MAC(httpd_req_t *req)
     return ESP_OK;
 }
 
-httpd_uri_t HTTP_Server::getSettings{
-    .uri = "/getSettings",
+const httpd_uri_t HTTP_Server::getMAC = {
+    .uri = "/getMAC",
     .method = HTTP_GET,
-    .handler = HTTP_Server::get_settings,
+    .handler = HTTP_Server::get_MAC,
     .user_ctx = NULL};
 
 esp_err_t HTTP_Server::get_settings(httpd_req_t *req)
@@ -137,10 +131,10 @@ esp_err_t HTTP_Server::get_settings(httpd_req_t *req)
     return ESP_OK;
 }
 
-httpd_uri_t HTTP_Server::setSettings{
-    .uri = "/setSettings",
-    .method = HTTP_POST,
-    .handler = HTTP_Server::set_settings,
+const httpd_uri_t HTTP_Server::getSettings = {
+    .uri = "/getSettings",
+    .method = HTTP_GET,
+    .handler = HTTP_Server::get_settings,
     .user_ctx = NULL};
 
 esp_err_t HTTP_Server::set_settings(httpd_req_t *req)
@@ -158,7 +152,7 @@ esp_err_t HTTP_Server::set_settings(httpd_req_t *req)
     else
     {
         cJSON *settings = cJSON_Parse(content);
-        //sharedNVS->saveConfig(settings);
+        // sharedNVS->saveConfig(settings);
         cJSON_AddStringToObject(setSettings, "status", "200");
     }
     httpd_resp_send(req, cJSON_PrintUnformatted(setSettings), strlen(cJSON_PrintUnformatted(setSettings)));
@@ -166,10 +160,40 @@ esp_err_t HTTP_Server::set_settings(httpd_req_t *req)
     return ESP_OK;
 }
 
+const httpd_uri_t HTTP_Server::setSettings = {
+    .uri = "/setSettings",
+    .method = HTTP_POST,
+    .handler = HTTP_Server::set_settings,
+    .user_ctx = NULL};
+
+esp_err_t HTTP_Server::get_total(httpd_req_t *req)
+{
+    httpd_resp_send(req, "{\"total\":0}", strlen("{\"total\":0}"));
+    return ESP_OK;
+}
+const httpd_uri_t HTTP_Server::getTotal = {
+    .uri = "/getTotal",
+    .method = HTTP_GET,
+    .handler = HTTP_Server::get_total,
+    .user_ctx = NULL};
+
+esp_err_t HTTP_Server::get_last(httpd_req_t *req)
+{
+    httpd_resp_send(req, "{\"last\":0}", strlen("{\"last\":0}"));
+    return ESP_OK;
+}
+
+const httpd_uri_t HTTP_Server::getLast = {
+    .uri = "/getLast",
+    .method = HTTP_GET,
+    .handler = HTTP_Server::get_last,
+    .user_ctx = NULL};
+
 bool HTTP_Server::init()
 {
     /* Generate default configuration */
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = 11;
 
     /* Empty handle to esp_http_server */
     httpd_handle_t server = NULL;
@@ -186,6 +210,8 @@ bool HTTP_Server::init()
         httpd_register_uri_handler(server, &getMAC);
         httpd_register_uri_handler(server, &getSettings);
         httpd_register_uri_handler(server, &setSettings);
+        httpd_register_uri_handler(server, &getLast);
+        httpd_register_uri_handler(server, &getTotal);
         return true;
     }
     return false;
