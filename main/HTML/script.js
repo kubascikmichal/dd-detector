@@ -50,6 +50,41 @@ function getTotal() {
     xhttp.send();
 }
 
+function setSettings() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("POST", "setSettings", true);
+    xhttp.setRequestHeader('Content-Type', 'application/json');
+    xhttp.send(JSON.stringify({
+        treshold: document.getElementById("treshold").value,
+        MAC: document.getElementById("generator").value,
+    }));
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4) {
+            var response = JSON.parse(this.responseText);
+            console.log(response);
+            if (response.status == 200) {
+                alert('Settings uploaded');
+            } else {
+                alert('Settings are not uploaded');
+            }
+        }
+    }
+}
+
+function getSettings() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "getSettings", true);
+    xhttp.send();
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4) {
+            var settings = JSON.parse(this.responseText);
+            console.log(settings);
+            document.getElementById("treshold").setAttribute('value', (settings.hasOwnProperty('treshold') > 0 ? settings.treshold : ""));
+            document.getElementById("generator").setAttribute('value', (settings.hasOwnProperty('MAC') > 0 ? settings.MAC : ""));
+        }
+    }
+}
+getSettings();
 getMAC()
 getLast()
 getTotal()

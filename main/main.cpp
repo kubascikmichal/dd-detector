@@ -23,9 +23,10 @@ extern "C"
 
 void app_main(void)
 {
+    NVS *nvs = new NVS();
     AP *ap = new AP("Detector", "123456789");
     SharedData *data = new SharedData();
-    HTTP_Server *server = new HTTP_Server(data);
+    HTTP_Server *server = new HTTP_Server(data, nvs);
     server->init();
     uint8_t array[6] = {0};
     uart_config_t cfg = {

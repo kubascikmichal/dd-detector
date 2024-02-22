@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "esp_mac.h"
 #include "../Shared_data/SharedData.h"
+#include "../NVS/NVS.h"
 
 #define _STREAM_BOUNDARY "\r\n--123456789000000000000987654321\r\n"
 
@@ -15,9 +16,10 @@ class HTTP_Server
 {
 private:
 public:
-    HTTP_Server(SharedData *p_data = NULL);
+    HTTP_Server(SharedData *p_data, NVS *nvs);
     ~HTTP_Server();
     static SharedData *shared_data;
+    static NVS *nvs;
 
     static esp_err_t root_get_handler(httpd_req_t *req);
     static const httpd_uri_t mainPageHandler;
