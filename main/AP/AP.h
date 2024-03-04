@@ -31,6 +31,8 @@ public:
        int p_ssid_hidden = 0, int p_max_connection = 4,
        int p_beacon_interval = 0);
     ~AP();
+    bool start();
+    bool stop();
 
 private:
     void nvs_init();

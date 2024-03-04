@@ -4,6 +4,7 @@ SharedData::SharedData()
 {
     this->mSemaphoredB = xSemaphoreCreateMutex();
     this->mSemaphoreStats = xSemaphoreCreateMutex();
+    this->afterRestartAbove = 0;
 }
 
 SharedData::~SharedData()
@@ -32,4 +33,26 @@ bool SharedData::set_dB(float dB)
         xSemaphoreGive((this->mSemaphoredB));
     }
     return true;
+}
+
+uint64_t SharedData::getAfterAbove()
+{
+    uint64_t after = 0;
+    if (xSemaphoreTake((this->mSemaphoreStats), 300) == pdPASS)
+    {
+        after = this->afterRestartAbove;
+        xSemaphoreGive((this->mSemaphoreStats));
+    }
+    return after;
+}
+
+bool SharedData::increment()
+{
+    if (xSemaphoreTake((this->mSemaphoreStats), 300) == pdPASS)
+    {
+        this->afterRestartAbove += 1;
+        xSemaphoreGive((this->mSemaphoreStats));
+        return true;
+    }
+    return false;
 }

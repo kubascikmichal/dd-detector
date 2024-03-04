@@ -5,7 +5,7 @@ AP::AP(char *SSID, char *PASSWORD, bool long_range, int p_channel,
        int p_beacon_interval)
 {
     this->m_long_range = long_range;
-    //this->nvs_init();
+    // this->nvs_init();
     this->basic_AP_init();
     esp_netif_init();
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -62,4 +62,16 @@ void AP::basic_AP_init()
     esp_wifi_set_storage(WIFI_STORAGE_RAM);
 
     esp_wifi_set_mode(WIFI_MODE_AP);
+}
+
+bool AP::start()
+{
+    ESP_ERROR_CHECK(esp_wifi_start());
+    return true;
+}
+
+bool AP::stop()
+{
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    return true;
 }

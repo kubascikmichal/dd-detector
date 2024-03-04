@@ -1,6 +1,6 @@
 #include "HTTP_Server.h"
 
-HTTP_Server::HTTP_Server(SharedData *p_data, NVS* nvs)
+HTTP_Server::HTTP_Server(SharedData *p_data, NVS *nvs)
 {
     this->shared_data = p_data;
     this->nvs = nvs;
@@ -166,7 +166,10 @@ const httpd_uri_t HTTP_Server::setSettings = {
 
 esp_err_t HTTP_Server::get_total(httpd_req_t *req)
 {
-    httpd_resp_send(req, "{\"total\":0}", strlen("{\"total\":0}"));
+    cJSON *total = cJSON_CreateObject();
+    printf("%llu\n\r", nvs->getTotalyOver());
+    cJSON_AddNumberToObject(total, "total", (double) nvs->getTotalyOver());
+    httpd_resp_send(req, cJSON_PrintUnformatted(total), strlen(cJSON_PrintUnformatted(total)));
     return ESP_OK;
 }
 const httpd_uri_t HTTP_Server::getTotal = {
@@ -177,7 +180,10 @@ const httpd_uri_t HTTP_Server::getTotal = {
 
 esp_err_t HTTP_Server::get_last(httpd_req_t *req)
 {
-    httpd_resp_send(req, "{\"last\":0}", strlen("{\"last\":0}"));
+    cJSON *last = cJSON_CreateObject();
+    printf("%llu\n\r", shared_data->getAfterAbove());
+    cJSON_AddNumberToObject(last, "last", (double) shared_data->getAfterAbove());
+    httpd_resp_send(req, cJSON_PrintUnformatted(last), strlen(cJSON_PrintUnformatted(last)));
     return ESP_OK;
 }
 

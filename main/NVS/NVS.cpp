@@ -44,7 +44,7 @@ cJSON *NVS::getConfig()
         {
             free(json);
         }
-        xSemaphoreGive((this->xSemaphore)); 
+        xSemaphoreGive((this->xSemaphore));
     }
     return ret;
 }
@@ -54,7 +54,8 @@ uint64_t NVS::getTotalyOver()
     uint64_t total = 0;
     if (xSemaphoreTake(this->xSemaphore, 300))
     {
-        esp_err_t err = nvs_get_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, &total);
+        ESP_ERROR_CHECK(nvs_get_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, &total));
+        printf("get%llu\n\r", total);
         xSemaphoreGive((this->xSemaphore));
     }
     return total;
@@ -64,7 +65,8 @@ bool NVS::saveTotalyOver(uint64_t p_total)
 {
     if (xSemaphoreTake(this->xSemaphore, 300))
     {
-        esp_err_t err = nvs_set_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, p_total);
+        printf("set %llu\n\r", p_total);
+        ESP_ERROR_CHECK(nvs_set_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, p_total));
         xSemaphoreGive((this->xSemaphore));
     }
     return true;

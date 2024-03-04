@@ -16,11 +16,12 @@ private:
     SemaphoreHandle_t mSemaphoredB;
     SemaphoreHandle_t mSemaphoreStats;
     float actual_dB = 0;
-    uint32_t totalyAbove = 0;
     uint32_t afterRestartAbove = 0;
 public:
     SharedData();
     ~SharedData();
+    uint64_t getAfterAbove();
+    bool increment();
     float get_dB();
     bool set_dB(float dB);
 };
