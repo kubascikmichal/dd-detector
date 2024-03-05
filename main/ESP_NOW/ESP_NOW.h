@@ -37,6 +37,7 @@ public:
     bool addPeer(uint8_t *addr);
     inline void setPeerConfig(cJSON *config) { this->peerConfig = config; };
     inline cJSON* getPeerConfig(){return this->peerConfig;};
+    bool restart();
 };
 
 #endif

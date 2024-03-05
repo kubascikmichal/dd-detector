@@ -102,3 +102,15 @@ bool ESP_NOW::addPeer(uint8_t *addr)
     free(peer);
     return ret == ESP_OK;
 }
+
+bool ESP_NOW::restart()
+{
+    ESP_ERROR_CHECK(esp_wifi_restore());
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(ESPNOW_WIFI_MODE));
+    ESP_ERROR_CHECK(esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_LR));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    return true;
+}

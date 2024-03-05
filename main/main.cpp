@@ -72,13 +72,15 @@ void app_main(void)
             uint64_t total = nvs->getTotalyOver();
             nvs->saveTotalyOver(total+1);
             data->increment();
-            now->send_message(mac, (uint8_t *)"Over", 2);
+            int ret = now->send_message(mac, (uint8_t *)"Over", 2);
+            printf("%d\n\r", ret);
         }
         if (active)
         {
             if (((esp_timer_get_time() - start) / 1000) > 60000)
             {
                 ap->stop();
+                now->restart();
                 stop = esp_timer_get_time();
                 active = false;
             }
