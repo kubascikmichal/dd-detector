@@ -1,61 +1,313 @@
+:root {
+    color-scheme: light;
+    --page: #f3f3f1;
+    --surface: #fcfcfb;
+    --text: #0b0b0b;
+    --text-2: #52514e;
+    --line: #e4e3df;
+    --series: #2a78d6;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --critical: #d03b3b;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+        --page: #111110;
+        --surface: #1a1a19;
+        --text: #f0efec;
+        --text-2: #c3c2b7;
+        --line: #33332f;
+        --series: #3987e5;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0 auto;
+    padding: 16px;
+    max-width: 960px;
+    background: var(--page);
+    color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+h2 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 16px;
+    margin-bottom: 12px;
+}
+
+.top p {
+    margin: 0;
+}
+
+.muted {
+    color: var(--text-2);
+}
+
+.small {
+    margin: 12px 0 0;
+    font-size: 0.8rem;
+}
+
+.mono {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere;
+}
+
+main {
+    display: grid;
+    gap: 12px;
+}
+
+@media (min-width: 720px) {
+    main {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+    }
+
+    .wide {
+        grid-column: 1 / -1;
+    }
+}
+
 .card {
-    max-width: 90%;
-    box-shadow: 0px 2px 18px -4px rgba(0, 0, 0, 0.75);
-    border-radius: 25px;
-    min-height: 25px;
-    background: #00fff7;
-    padding: 30px;
-    box-sizing: border-box;
-    color: rgb(0, 0, 0);
-    margin-top: 25px;
-    margin-left: 5%;
-    text-align: center;
+    min-width: 0;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
 }
 
-.settings_category {
-    max-width: 90%;
-    box-shadow: 0px 2px 18px -4px rgba(0, 0, 0, 0.75);
-    border-radius: 25px;
-    min-height: 25px;
-    background: #dbdbdb;
-    padding: 30px;
-    box-sizing: border-box;
-    color: rgb(0, 0, 0);
-    margin-top: 25px;
-    margin-left: 5%;
-    text-align: center;
+.card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
-.settings_text_category {
-    text-align: left;
+.banner {
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--critical);
+    border-radius: 12px;
 }
 
-.sources_card {
-    min-height: 25px;
-    text-align: center;
+.pill {
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* The status colour only marks the dot: the label next to it carries the meaning. */
+.pill::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--text-2);
+}
+
+.pill.good::before {
+    background: var(--good);
+}
+
+.pill.warning::before {
+    background: var(--warning);
+}
+
+.pill.critical::before {
+    background: var(--critical);
+}
+
+.hero {
+    margin: 8px 0;
+    font-size: 3rem;
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.hero small {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--text-2);
+}
+
+.meter {
+    position: relative;
+    height: 10px;
+    background: var(--line);
+    border-radius: 5px;
+}
+
+.meter-fill {
+    width: 0;
+    height: 100%;
+    background: var(--series);
+    border-radius: 5px;
+    transition: width 0.3s;
+}
+
+.meter-threshold {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: var(--text);
+}
+
+.chart {
+    position: relative;
+    height: 220px;
+    margin-top: 16px;
+    touch-action: pan-y;
+}
+
+.chart svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.chart text {
+    fill: var(--text-2);
+    font-size: 12px;
+}
+
+.chart .grid {
+    stroke: var(--line);
+    stroke-width: 1;
+}
+
+.chart .limit {
+    stroke: var(--text-2);
+    stroke-width: 1;
+}
+
+.chart .series {
+    fill: none;
+    stroke: var(--series);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.chart .wash {
+    fill: var(--series);
+    fill-opacity: 0.1;
+}
+
+.chart .dot {
+    fill: var(--series);
+    stroke: var(--surface);
+    stroke-width: 2;
+}
+
+.chart .cross {
+    stroke: var(--text-2);
+    stroke-width: 1;
+}
+
+.tooltip {
+    position: absolute;
+    top: 0;
+    padding: 4px 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0 0;
+}
+
+.stats .full {
+    grid-column: 1 / -1;
+}
+
+.stats dt {
+    color: var(--text-2);
+    font-size: 0.8rem;
+}
+
+.stats dd {
+    margin: 0;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+label {
+    display: block;
+    margin-top: 12px;
+    font-size: 0.9rem;
+}
+
+input {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid var(--text-2);
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+}
+
+input[aria-invalid="true"] {
+    border-color: var(--critical);
 }
 
 .button {
-    border: rgb(0, 0, 0);
-    border-radius: 15px;
-    background-color: rgb(5, 209, 255);
-    color: black;
-    padding: 16px 32px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    transition-duration: 0.4s;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: var(--series);
+    border: 0;
+    border-radius: 8px;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
     cursor: pointer;
 }
 
-.button:hover {
-    background-color: rgb(62, 1, 230);
-    color: rgb(0, 0, 0);
+.button:disabled {
+    opacity: 0.55;
+    cursor: default;
 }
 
-.footer {
-    margin-top: 25px;
-    text-align: center;
+#settings-result,
+#gen-detail {
+    margin: 8px 0 0;
+    min-height: 1.45em;
 }

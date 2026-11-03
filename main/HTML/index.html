@@ -1,33 +1,89 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <title>
-        Decibel meter
-    </title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Decibel meter</title>
     <link href="/style.css" rel="stylesheet">
-    </link>
-    <script src="script.js"></script>
+    <script src="/script.js" defer></script>
 </head>
 
 <body>
-    <div>
-        <div class="card">
-            <h3>Actual dB: <span id="actual"></span></h3>
-            <div>
-                <h1>Settings</h1>
-                <form>
-                    <p>Treshold [dB]: <input type="number" id="treshold"></p>
-                    <p>Generator MAC address <input type="text" id="generator"></p>
-                </form>
-            </div>
-            <button class="button" onclick="setSettings()">Zmenit nastavenia</button>
+    <header class="top">
+        <h1>Decibel meter</h1>
+        <p id="portal" class="muted" role="status">Connecting…</p>
+    </header>
 
-            <div>
-                <h2>Info & stats</h2>
-                <p>My MAC address <span id="MAC"></span></p>
-                <p>Totaly over: <span id="totaly"></span></p>
-                <p>Last 24h (after restart): <span id="last"></span></p>
+    <div id="offline" class="banner" role="alert" hidden></div>
+
+    <main>
+        <section class="card wide" aria-labelledby="live-title">
+            <div class="card-head">
+                <h2 id="live-title">Live level</h2>
+                <span id="level-status" class="pill">…</span>
             </div>
-        </div>
-    </div>
+            <p class="hero"><span id="db">--</span> <small>dB</small></p>
+            <div class="meter" aria-hidden="true">
+                <div id="meter-fill" class="meter-fill"></div>
+                <div id="meter-threshold" class="meter-threshold" hidden></div>
+            </div>
+            <div id="chart" class="chart">
+                <svg id="chart-svg" role="img" aria-label="Sound level over the last two minutes"></svg>
+                <div id="tooltip" class="tooltip" hidden></div>
+            </div>
+        </section>
+
+        <section class="card" aria-labelledby="gen-title">
+            <div class="card-head">
+                <h2 id="gen-title">Generator link</h2>
+                <span id="gen-status" class="pill">…</span>
+            </div>
+            <p id="gen-detail" class="muted"></p>
+            <button id="connect" class="button" type="button">Connect to generator</button>
+            <dl class="stats">
+                <div><dt>Sent</dt><dd id="tx-rate">--</dd></div>
+                <div><dt>Received</dt><dd id="rx-rate">--</dd></div>
+                <div><dt>Delivered</dt><dd id="delivery">--</dd></div>
+                <div><dt>Signal</dt><dd id="rssi">--</dd></div>
+                <div><dt>Frames sent / received</dt><dd id="frames">--</dd></div>
+                <div><dt>Last heard</dt><dd id="last-rx">--</dd></div>
+                <div class="full"><dt>Data from generator</dt><dd id="reply" class="mono">--</dd></div>
+            </dl>
+            <p class="muted small">Rates are 10&nbsp;s averages of real traffic. The link only carries the handshake and
+                over-threshold events, so 0&nbsp;B/s on a quiet link is normal.</p>
+        </section>
+
+        <section class="card" aria-labelledby="stats-title">
+            <h2 id="stats-title">Statistics</h2>
+            <dl class="stats">
+                <div><dt>Minimum</dt><dd id="min">--</dd></div>
+                <div><dt>Average</dt><dd id="avg">--</dd></div>
+                <div><dt>Maximum</dt><dd id="max">--</dd></div>
+                <div><dt>Samples</dt><dd id="samples">--</dd></div>
+                <div><dt>Over threshold, since restart</dt><dd id="over-boot">--</dd></div>
+                <div><dt>Over threshold, all time</dt><dd id="over-total">--</dd></div>
+                <div><dt>Uptime</dt><dd id="uptime">--</dd></div>
+                <div><dt>Connected devices</dt><dd id="clients">--</dd></div>
+                <div><dt>Bad sensor frames</dt><dd id="bad-frames">--</dd></div>
+                <div><dt>Free memory</dt><dd id="heap">--</dd></div>
+                <div class="full"><dt>This device's MAC (enter it on the generator)</dt><dd id="mac" class="mono">--</dd></div>
+            </dl>
+        </section>
+
+        <section class="card" aria-labelledby="settings-title">
+            <h2 id="settings-title">Settings</h2>
+            <form id="settings" novalidate>
+                <label for="threshold">Threshold (dB)</label>
+                <input id="threshold" type="number" inputmode="decimal" min="0" max="200" step="0.1" placeholder="e.g. 85">
+                <label for="generator">Generator MAC address</label>
+                <input id="generator" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                    placeholder="aa:bb:cc:dd:ee:ff">
+                <button class="button" type="submit">Save settings</button>
+                <p id="settings-result" class="muted" role="status"></p>
+            </form>
+        </section>
+    </main>
 </body>
+
+</html>

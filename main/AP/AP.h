@@ -1,42 +1,36 @@
 #ifndef __ACCESS_POINT_H__
 #define __ACCESS_POINT_H__
 
-#include <stdio.h>
-#include "esp_log.h"
-
+#include "esp_netif.h"
 #include "esp_wifi.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
+
+#define AP_IP_A 192
+#define AP_IP_B 168
+#define AP_IP_C 1
+#define AP_IP_D 150
+#define AP_IP_STR "192.168.1.150"
+// ESP-NOW only works between devices on the same channel, so it is fixed
+// for both the AP window and the ESP-NOW-only phase.
+#define WIFI_CHANNEL 1
 
 class AP
 {
-    typedef enum AP_TYPE
-    {
-        NO_PASSWORD,
-        WITH_PASSWORD
-    } Type;
-
-private:
-    int m_channel;
-    int m_ssid_hidden;
-    int m_max_connections;
-    int m_beacon_interval;
-    bool m_long_range;
-    wifi_config_t ap;
 public:
-    AP(char *SSID, char *PASSWORD, bool long_range = false, int p_channel = 0,
-       int p_ssid_hidden = 0, int p_max_connection = 4,
-       int p_beacon_interval = 0);
-    AP(char *SSID, bool long_range = false, int p_channel = 0,
-       int p_ssid_hidden = 0, int p_max_connection = 4,
-       int p_beacon_interval = 0);
-    ~AP();
-    bool start();
-    bool stop();
+    // Starts the visible portal AP. It also accepts Long Range frames, so ESP-NOW
+    // running beside it can reach a generator that is in its LR-only phase.
+    AP(const char *ssid, const char *password);
+
+    // Hides the AP and switches the radio to LR only. Phones can no longer connect.
+    // ESP-NOW must be suspended around this call.
+    void switchToEspNowOnly();
+
+    int connectedClients();
 
 private:
-    void nvs_init();
-    void basic_AP_init();
+    void configureNetwork();
+
+    esp_netif_t *m_netif;
+    wifi_config_t m_config;
 };
 
 #endif

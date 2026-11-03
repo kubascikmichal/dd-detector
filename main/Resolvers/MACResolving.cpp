@@ -1,77 +1,43 @@
 #include "MACResolving.h"
 
-uint8_t strToMAC(const char *strMAC, uint8_t len, uint8_t *MAC, uint8_t size)
+static int hexValue(char c)
 {
-    memset(MAC, 0, size);
-    printf("%s\n\r", strMAC);
-    bool up = true;
-    uint8_t MAC_index = 0;
-    for (uint8_t i = 0; i < len; i++)
+    if (c >= '0' && c <= '9')
     {
-        if (strMAC[i] == ':')
-        {
-            MAC_index++;
-            up = true;
-        }
-        else
-        {
-            if (up)
-            {
-                MAC[MAC_index] |= getHEX(strMAC[i]) << 4;
-                up = false;
-            }
-            else
-            {
-                MAC[MAC_index] |= getHEX(strMAC[i]);
-            }
-        }
+        return c - '0';
     }
-    printf("%d \n\r", MAC_index+1);
-    printf("RESOLVED -> %02x:%02x:%02x:%02x:%02x:%02x\n\r", MAC2STR(MAC));
-    return MAC_index + 1;
+    if (c >= 'a' && c <= 'f')
+    {
+        return c - 'a' + 10;
+    }
+    if (c >= 'A' && c <= 'F')
+    {
+        return c - 'A' + 10;
+    }
+    return -1;
 }
 
-uint8_t getHEX(char c)
+bool parseMAC(const char *str, uint8_t *mac)
 {
-    if (c >= 'A' && c <= 'Z')
+    if (str == nullptr)
     {
-        c = c - 'A' + 'a';
+        return false;
     }
-    switch (c)
+    for (int i = 0; i < 6; i++)
     {
-    case '0':
-        return 0x00;
-    case '1':
-        return 0x01;
-    case '2':
-        return 0x02;
-    case '3':
-        return 0x03;
-    case '4':
-        return 0x04;
-    case '5':
-        return 0x05;
-    case '6':
-        return 0x06;
-    case '7':
-        return 0x07;
-    case '8':
-        return 0x08;
-    case '9':
-        return 0x09;
-    case 'a':
-        return 0x0a;
-    case 'b':
-        return 0x0b;
-    case 'c':
-        return 0x0c;
-    case 'd':
-        return 0x0d;
-    case 'e':
-        return 0x0e;
-    case 'f':
-        return 0x0f;
-    default:
-        return 0x00;
+        const char *part = str + i * 3;
+        int high = hexValue(part[0]);
+        int low = high < 0 ? -1 : hexValue(part[1]);
+        if (low < 0)
+        {
+            return false;
+        }
+        char separator = part[2];
+        if ((i < 5 && separator != ':') || (i == 5 && separator != '\0'))
+        {
+            return false;
+        }
+        mac[i] = (high << 4) | low;
     }
+    return true;
 }

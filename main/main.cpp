@@ -4,20 +4,22 @@
  * SPDX-License-Identifier: CC0-1.0
  */
 
-#include <stdio.h>
-#include <inttypes.h>
-#include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "AP/AP.h"
-#include "HTTP_Server/HTTP_Server.h"
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
-#include "UART/UART.h"
-#include "NVS/NVS.h"
-#include "ESP_NOW/ESP_NOW.h"
-#include "rom/ets_sys.h"
+#include "esp_log.h"
 #include "esp_timer.h"
+#include "lwip/inet.h"
+#include "AP/AP.h"
+#include "DNS_Server/DNS_Server.h"
+#include "ESP_NOW/ESP_NOW.h"
+#include "HTTP_Server/HTTP_Server.h"
+#include "NVS/NVS.h"
+#include "Shared_data/SharedData.h"
+#include "UART/UART.h"
+
+static const char *TAG = "main";
+static constexpr int64_t PORTAL_WINDOW_US = 5LL * 60 * 1000000;
 
 extern "C"
 {
@@ -27,72 +29,69 @@ extern "C"
 void app_main(void)
 {
     NVS *nvs = new NVS();
-    AP *ap = new AP("Detector", "123456789");
     SharedData *data = new SharedData();
-    HTTP_Server *server = new HTTP_Server(data, nvs);
+    data->setOverTotal(nvs->getTotalyOver());
+
+    Settings settings;
+    cJSON *stored = nvs->getConfig();
+    if (!parseSettings(stored, settings))
+    {
+        ESP_LOGW(TAG, "Stored settings contain invalid values, ignoring those");
+    }
+    cJSON_Delete(stored);
+    data->setSettings(settings);
+
+    AP *ap = new AP("Detector", "123456789");
+    ESP_NOW *now = new ESP_NOW(); // runs beside the AP, on the same channel
+    now->setGenerator(settings.hasGenerator ? settings.generator : nullptr);
+
+    DNS_Server *dns = new DNS_Server(inet_addr(AP_IP_STR));
+    dns->start();
+    HTTP_Server *server = new HTTP_Server(data, nvs, now, ap);
     server->init();
-    uint8_t array[6] = {0};
-    uart_config_t cfg = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1};
+    data->setPortalDeadline(esp_timer_get_time() + PORTAL_WINDOW_US);
+
+    uart_config_t cfg = {};
+    cfg.baud_rate = 115200;
+    cfg.data_bits = UART_DATA_8_BITS;
+    cfg.parity = UART_PARITY_DISABLE;
+    cfg.stop_bits = UART_STOP_BITS_1;
     UART *uart = new UART(UART_NUM_1, &cfg, 21, 20, -1, -1, 256);
     uart->init();
 
-    ESP_NOW *now = new ESP_NOW();
-    uint8_t mac[6];
-    cJSON *dev_cfg = nvs->getConfig();
-    printf("config => %s\n\r", cJSON_PrintUnformatted(dev_cfg));
-    strToMAC(cJSON_GetObjectItem(dev_cfg, "MAC")->valuestring, 17, mac, 6);
-    float treshold = atof(cJSON_GetObjectItem(dev_cfg, "treshold")->valuestring);
-    printf("%0.2f\n\r", treshold);
-
-    now->addPeer(mac);
-    now->send_message(mac, (uint8_t *)"HH", 2);
-
-    memset(mac, 0xff, 6);
-    now->addPeer(mac);
-    now->send_message(mac, (uint8_t *)"HH", 2);
-
-    int64_t start = esp_timer_get_time();
-    int64_t stop = esp_timer_get_time();
-    bool active = true;
+    bool portalOpen = true;
+    uint8_t frame[6] = {0};
     while (true)
     {
         vTaskDelay(300 / portTICK_PERIOD_MS);
-        uart->recieveString(array, 6, 300);
-        printf("%x %x %x %x %x %x\n\r", array[0], array[1], array[2], array[3], array[4], array[5]);
-        float actDB = ((int32_t)(((array[0] == 0xbb && array[1] == 0xaa) ? (array[3] + (array[4] << 8)) : 0) * 10)) / 100.;
-        printf("decibels = %0.2f\n\r", ((array[0] == 0xbb && array[1] == 0xaa) ? (array[3] + (array[4] << 8)) * 0.1 : 0));
-        data->set_dB(actDB);
-        memset(array, 0, 6);
-        if (actDB > treshold)
+        memset(frame, 0, sizeof(frame));
+        uart->recieveString(frame, sizeof(frame), 300);
+
+        if (frame[0] == 0xbb && frame[1] == 0xaa)
         {
-            uint64_t total = nvs->getTotalyOver();
-            nvs->saveTotalyOver(total+1);
-            data->increment();
-            int ret = now->send_message(mac, (uint8_t *)"Over", 2);
-            printf("%d\n\r", ret);
-        }
-        if (active)
-        {
-            if (((esp_timer_get_time() - start) / 1000) > 60000)
+            float dB = (frame[3] + (frame[4] << 8)) * 0.1f;
+            data->recordSample(dB);
+            Settings current = data->getSettings();
+            if (current.hasThreshold && dB > current.threshold)
             {
-                ap->stop();
-                now->restart();
-                stop = esp_timer_get_time();
-                active = false;
+                nvs->saveTotalyOver(data->recordOver());
+                now->sendOverEvent();
             }
         }
         else
         {
-            if ((esp_timer_get_time() - stop) / 1000 > 240000)
-            {
-                ap->start();
-                start = esp_timer_get_time();
-                active = true;
-            }
+            data->recordBadFrame();
+        }
+
+        if (portalOpen && esp_timer_get_time() >= data->getPortalDeadline())
+        {
+            ESP_LOGI(TAG, "Portal window over, switching to ESP-NOW only");
+            server->stop();
+            dns->stop();
+            now->suspend();
+            ap->switchToEspNowOnly();
+            now->resume(false);
+            portalOpen = false;
         }
     }
 }

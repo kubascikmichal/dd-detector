@@ -19,11 +19,27 @@ NVS::~NVS()
 
 bool NVS::saveConfig(cJSON *config)
 {
-    esp_err_t err = nvs_set_str(this->storage_handle, NVS_CONFIG_LABEL, cJSON_PrintUnformatted(config));
-    err = nvs_commit(this->storage_handle);
-    return (err == ESP_OK);
+    char *json = cJSON_PrintUnformatted(config);
+    if (json == NULL)
+    {
+        return false;
+    }
+    bool saved = false;
+    if (xSemaphoreTake(this->xSemaphore, 300))
+    {
+        esp_err_t err = nvs_set_str(this->storage_handle, NVS_CONFIG_LABEL, json);
+        if (err == ESP_OK)
+        {
+            err = nvs_commit(this->storage_handle);
+        }
+        saved = (err == ESP_OK);
+        xSemaphoreGive(this->xSemaphore);
+    }
+    cJSON_free(json);
+    return saved;
 }
 
+// Returns NULL when nothing is stored yet (first boot). The caller owns the result.
 cJSON *NVS::getConfig()
 {
     cJSON *ret = NULL;
@@ -31,20 +47,19 @@ cJSON *NVS::getConfig()
     {
         size_t size = 0;
         esp_err_t err = nvs_get_str(this->storage_handle, NVS_CONFIG_LABEL, NULL, &size);
-        printf("size %d\n\r", size);
-        if (err != ESP_OK || size <= 0)
+        if (err == ESP_OK && size > 0)
         {
-            return NULL;
+            char *json = (char *)malloc(size);
+            if (json != NULL)
+            {
+                if (nvs_get_str(this->storage_handle, NVS_CONFIG_LABEL, json, &size) == ESP_OK)
+                {
+                    ret = cJSON_Parse(json);
+                }
+                free(json);
+            }
         }
-        char *json = (char *)malloc(size * sizeof(char));
-        err = nvs_get_str(this->storage_handle, NVS_CONFIG_LABEL, json, &size);
-        ret = cJSON_Parse(json);
-        printf("json parsed\n\r");
-        if (sizeof(json))
-        {
-            free(json);
-        }
-        xSemaphoreGive((this->xSemaphore));
+        xSemaphoreGive(this->xSemaphore);
     }
     return ret;
 }
@@ -54,22 +69,31 @@ uint64_t NVS::getTotalyOver()
     uint64_t total = 0;
     if (xSemaphoreTake(this->xSemaphore, 300))
     {
-        ESP_ERROR_CHECK(nvs_get_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, &total));
-        printf("get%llu\n\r", total);
-        xSemaphoreGive((this->xSemaphore));
+        esp_err_t err = nvs_get_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, &total);
+        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
+        {
+            ESP_ERROR_CHECK_WITHOUT_ABORT(err);
+        }
+        xSemaphoreGive(this->xSemaphore);
     }
     return total;
 }
 
 bool NVS::saveTotalyOver(uint64_t p_total)
 {
+    bool saved = false;
     if (xSemaphoreTake(this->xSemaphore, 300))
     {
-        printf("set %llu\n\r", p_total);
-        ESP_ERROR_CHECK(nvs_set_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, p_total));
-        xSemaphoreGive((this->xSemaphore));
+        esp_err_t err = nvs_set_u64(this->storage_handle, NVS_TOTAL_TRESHOLDS_LABEL, p_total);
+        if (err == ESP_OK)
+        {
+            err = nvs_commit(this->storage_handle);
+        }
+        ESP_ERROR_CHECK_WITHOUT_ABORT(err);
+        saved = (err == ESP_OK);
+        xSemaphoreGive(this->xSemaphore);
     }
-    return true;
+    return saved;
 }
 
 void NVS::init()
