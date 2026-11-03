@@ -178,27 +178,38 @@ function renderLevel(s) {
     }
 }
 
-function renderGenerator(gen) {
-    const views = {
-        idle: ['', 'Not connected', 'Press Connect to start the handshake.'],
-        sending: ['warning', 'Connecting…', `Sending handshake, attempt ${gen.attempts}.`],
-        waiting_reply: ['warning', 'Waiting for data…', 'The generator answered at radio level. Waiting for its data.'],
-        connected: ['good', 'Connected', gen.reply_ms !== undefined ? `Handshake took ${gen.reply_ms} ms.` : 'Receiving data from the generator.'],
-        no_reply: ['warning', 'No data', 'The generator is reachable but sent no data. Its firmware may need the handshake reply.'],
-        no_ack: ['critical', 'Not reachable', `No answer after ${gen.attempts} attempts. Check the MAC address and that the generator is on.`],
-    };
-    let [kind, label, detail] = views[gen.state] || views.idle;
-    if (!gen.configured) {
-        [kind, label, detail] = ['', 'No generator set', 'Enter the generator MAC address in Settings.'];
-    } else if (gen.link_lost && gen.state !== 'sending') {
-        [kind, label, detail] = ['critical', 'Link lost', 'The last frames were not delivered. Try connecting again.'];
+function genStatus(gen, sensorOk) {
+    if (gen.session) {
+        return sensorOk
+            ? ['good', 'Connected', 'Sending the live level to the generator.']
+            : ['warning', 'Waiting for sensor', 'The generator is connected, but there is no measurement to send.'];
     }
+    if (gen.test === 'testing') {
+        return ['warning', 'Testing…', `Contacting the generator, attempt ${gen.attempts}.`];
+    }
+    if (gen.link_lost) {
+        return ['critical', 'Link lost', 'The last frames were not delivered. Check that the generator is on.'];
+    }
+    if (gen.test === 'reachable') {
+        return ['good', 'Reachable', 'The generator answered. Over-threshold events will reach it.'];
+    }
+    if (gen.test === 'no_ack') {
+        return ['critical', 'Not reachable', `No answer after ${gen.attempts} attempts. Check the MAC address and that the generator is on.`];
+    }
+    if (!gen.configured) {
+        return ['', 'No generator set', 'Enter the generator MAC address in Settings.'];
+    }
+    return ['', 'Not connected', 'Press Test connection to check the radio link.'];
+}
+
+function renderGenerator(gen, sensorOk) {
+    const [kind, label, detail] = genStatus(gen, sensorOk);
     setPill('gen-status', kind, label);
     setText('gen-detail', detail);
 
-    const busy = gen.state === 'sending' || gen.state === 'waiting_reply';
-    $('connect').disabled = busy || connecting;
-    $('connect').textContent = busy || connecting ? 'Connecting…' : 'Connect to generator';
+    const busy = gen.test === 'testing' || testing;
+    $('connect').disabled = busy;
+    $('connect').textContent = busy ? 'Testing…' : 'Test connection';
 
     setText('tx-rate', formatBytes(gen.tx_bps));
     setText('rx-rate', formatBytes(gen.rx_bps));
@@ -207,7 +218,9 @@ function renderGenerator(gen) {
     setText('rssi', orDash(gen.rssi, ' dBm'));
     setText('frames', `${gen.tx_frames} / ${gen.rx_frames}`);
     setText('last-rx', gen.last_rx_s === undefined ? 'Never' : `${formatDuration(gen.last_rx_s)} ago`);
-    setText('reply', gen.reply || '--');
+    setText('data-frames', gen.data_frames);
+    $('ignored').hidden = !gen.ignored;
+    setText('ignored', gen.ignored ? `Ignored ${gen.ignored} frames from ${gen.ignored_mac}. If that is your generator, correct its MAC address in Settings.` : '');
 }
 
 function renderStats(s) {
@@ -232,7 +245,7 @@ function renderOffline(message) {
 
 /* ---------- Polling ---------- */
 
-let connecting = false;
+let testing = false;
 let portalSeconds = null;
 
 async function poll() {
@@ -247,7 +260,7 @@ async function poll() {
         setText('portal', `Wi-Fi portal closes in ${formatDuration(body.portal_s)}`);
         addSample(body.sensor_ok && body.db !== undefined ? body.db : null);
         renderLevel(body);
-        renderGenerator(body.gen);
+        renderGenerator(body.gen, body.sensor_ok);
         renderStats(body);
     } catch (e) {
         addSample(null);
@@ -261,7 +274,7 @@ async function poll() {
     setTimeout(poll, POLL_MS);
 }
 
-/* ---------- Settings and handshake ---------- */
+/* ---------- Settings and link test ---------- */
 
 function validateSettings() {
     const threshold = $('threshold').value.trim();
@@ -297,12 +310,12 @@ async function saveSettings() {
     }
 }
 
-async function connectGenerator() {
-    connecting = true;
+async function testConnection() {
+    testing = true;
     $('connect').disabled = true;
-    $('connect').textContent = 'Connecting…';
+    $('connect').textContent = 'Testing…';
     let started = false;
-    // Connect always uses what is on screen, even if Save was not pressed.
+    // The test always uses what is on screen, even if Save was not pressed.
     const error = await saveSettings();
     if (error) {
         setText('settings-result', error);
@@ -310,17 +323,17 @@ async function connectGenerator() {
         setText('settings-result', 'Enter the generator MAC address first.');
     } else {
         try {
-            const { ok, body } = await fetchJson('/connectGenerator', { method: 'POST' });
+            const { ok, body } = await fetchJson('/testGenerator', { method: 'POST' });
             started = ok;
             setText('settings-result', ok ? '' : body.error);
         } catch (e) {
             setText('settings-result', 'Could not reach the detector.');
         }
     }
-    connecting = false;
+    testing = false;
     if (!started) { // on success the next poll updates the button from the real state
         $('connect').disabled = false;
-        $('connect').textContent = 'Connect to generator';
+        $('connect').textContent = 'Test connection';
     }
 }
 
@@ -339,7 +352,7 @@ $('settings').addEventListener('submit', async (event) => {
     const error = await saveSettings();
     setText('settings-result', error || 'Settings saved.');
 });
-$('connect').addEventListener('click', connectGenerator);
+$('connect').addEventListener('click', testConnection);
 
 const chart = $('chart');
 chart.addEventListener('pointermove', (event) => {

@@ -60,48 +60,18 @@ static double oneDecimal(float value)
     return round(value * 10.0) / 10.0;
 }
 
-static const char *handshakeName(ESP_NOW::Handshake state)
+static const char *linkTestName(ESP_NOW::LinkTest test)
 {
-    switch (state)
+    switch (test)
     {
-    case ESP_NOW::Handshake::Sending:
-        return "sending";
-    case ESP_NOW::Handshake::WaitingReply:
-        return "waiting_reply";
-    case ESP_NOW::Handshake::Connected:
-        return "connected";
-    case ESP_NOW::Handshake::NoReply:
-        return "no_reply";
-    case ESP_NOW::Handshake::NoAck:
+    case ESP_NOW::LinkTest::Testing:
+        return "testing";
+    case ESP_NOW::LinkTest::Reachable:
+        return "reachable";
+    case ESP_NOW::LinkTest::NoAck:
         return "no_ack";
     default:
         return "idle";
-    }
-}
-
-// Printable payloads are shown as text, anything else as hex.
-static void formatReply(const ESP_NOW::Stats &link, char *out, size_t size)
-{
-    int len = link.replyLen;
-    while (len > 0 && link.reply[len - 1] == '\0')
-    {
-        len--;
-    }
-    bool printable = len > 0;
-    for (int i = 0; i < len; i++)
-    {
-        printable = printable && link.reply[i] >= 0x20 && link.reply[i] < 0x7f;
-    }
-    out[0] = '\0';
-    if (printable)
-    {
-        snprintf(out, size, "%.*s", len, (const char *)link.reply);
-        return;
-    }
-    size_t pos = 0;
-    for (int i = 0; i < link.replyLen && pos + 3 < size; i++)
-    {
-        pos += snprintf(out + pos, size - pos, "%02x ", link.reply[i]);
     }
 }
 
@@ -145,7 +115,9 @@ static esp_err_t get_stats(httpd_req_t *req)
 
     cJSON *gen = cJSON_AddObjectToObject(json, "gen");
     cJSON_AddBoolToObject(gen, "configured", link.hasGenerator);
-    cJSON_AddStringToObject(gen, "state", handshakeName(link.handshake));
+    cJSON_AddStringToObject(gen, "test", linkTestName(link.test));
+    cJSON_AddBoolToObject(gen, "session", link.sessionActive);
+    cJSON_AddNumberToObject(gen, "data_frames", link.dataFramesSent);
     cJSON_AddBoolToObject(gen, "link_lost", link.linkLost);
     cJSON_AddNumberToObject(gen, "attempts", link.attempts);
     cJSON_AddNumberToObject(gen, "tx_frames", link.txFrames);
@@ -161,13 +133,12 @@ static esp_err_t get_stats(httpd_req_t *req)
         cJSON_AddNumberToObject(gen, "rssi", link.rssi);
         cJSON_AddNumberToObject(gen, "last_rx_s", (double)((now - link.lastRxUs) / 1000000));
     }
-    if (link.replyMs >= 0)
+    if (link.ignoredFrames > 0)
     {
-        cJSON_AddNumberToObject(gen, "reply_ms", link.replyMs);
+        snprintf(text, sizeof(text), MACSTR, MAC2STR(link.lastIgnored));
+        cJSON_AddNumberToObject(gen, "ignored", link.ignoredFrames);
+        cJSON_AddStringToObject(gen, "ignored_mac", text);
     }
-    char reply[ESPNOW_MAX_REPLY * 3 + 1];
-    formatReply(link, reply, sizeof(reply));
-    cJSON_AddStringToObject(gen, "reply", reply);
 
     return send_json(req, json);
 }
@@ -236,9 +207,9 @@ static esp_err_t set_settings(httpd_req_t *req)
     return send_result(req, true, nullptr);
 }
 
-static esp_err_t connect_generator(httpd_req_t *req)
+static esp_err_t test_generator(httpd_req_t *req)
 {
-    bool started = s_now->startHandshake();
+    bool started = s_now->startLinkTest();
     return send_result(req, started, "Set and save the generator MAC first");
 }
 
@@ -270,7 +241,7 @@ bool HTTP_Server::init()
         {.uri = "/getStats", .method = HTTP_GET, .handler = get_stats, .user_ctx = NULL},
         {.uri = "/getSettings", .method = HTTP_GET, .handler = get_settings, .user_ctx = NULL},
         {.uri = "/setSettings", .method = HTTP_POST, .handler = set_settings, .user_ctx = NULL},
-        {.uri = "/connectGenerator", .method = HTTP_POST, .handler = connect_generator, .user_ctx = NULL},
+        {.uri = "/testGenerator", .method = HTTP_POST, .handler = test_generator, .user_ctx = NULL},
     };
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();

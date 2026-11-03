@@ -9,15 +9,11 @@
 #define AP_IP_C 1
 #define AP_IP_D 150
 #define AP_IP_STR "192.168.1.150"
-// ESP-NOW only works between devices on the same channel, so it is fixed
-// for both the AP window and the ESP-NOW-only phase.
-#define WIFI_CHANNEL 1
 
 class AP
 {
 public:
-    // Starts the visible portal AP. It also accepts Long Range frames, so ESP-NOW
-    // running beside it can reach a generator that is in its LR-only phase.
+    // Starts the visible portal AP on the channel shared with the generator.
     AP(const char *ssid, const char *password);
 
     // Hides the AP and switches the radio to LR only. Phones can no longer connect.

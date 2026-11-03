@@ -40,7 +40,7 @@
                 <span id="gen-status" class="pill">…</span>
             </div>
             <p id="gen-detail" class="muted"></p>
-            <button id="connect" class="button" type="button">Connect to generator</button>
+            <button id="connect" class="button" type="button">Test connection</button>
             <dl class="stats">
                 <div><dt>Sent</dt><dd id="tx-rate">--</dd></div>
                 <div><dt>Received</dt><dd id="rx-rate">--</dd></div>
@@ -48,10 +48,11 @@
                 <div><dt>Signal</dt><dd id="rssi">--</dd></div>
                 <div><dt>Frames sent / received</dt><dd id="frames">--</dd></div>
                 <div><dt>Last heard</dt><dd id="last-rx">--</dd></div>
-                <div class="full"><dt>Data from generator</dt><dd id="reply" class="mono">--</dd></div>
+                <div class="full"><dt>Live data frames sent</dt><dd id="data-frames">--</dd></div>
             </dl>
-            <p class="muted small">Rates are 10&nbsp;s averages of real traffic. The link only carries the handshake and
-                over-threshold events, so 0&nbsp;B/s on a quiet link is normal.</p>
+            <p id="ignored" class="muted small" hidden></p>
+            <p class="muted small">The live connection is started with <em>Connect to detector</em> on the generator's page.
+                Rates are 10&nbsp;s averages, so 0&nbsp;B/s without a connection is normal.</p>
         </section>
 
         <section class="card" aria-labelledby="stats-title">

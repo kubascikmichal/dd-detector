@@ -42,7 +42,7 @@ void app_main(void)
     data->setSettings(settings);
 
     AP *ap = new AP("Detector", "123456789");
-    ESP_NOW *now = new ESP_NOW(); // runs beside the AP, on the same channel
+    ESP_NOW *now = new ESP_NOW(data); // runs beside the AP, on the same channel
     now->setGenerator(settings.hasGenerator ? settings.generator : nullptr);
 
     DNS_Server *dns = new DNS_Server(inet_addr(AP_IP_STR));
@@ -90,7 +90,7 @@ void app_main(void)
             dns->stop();
             now->suspend();
             ap->switchToEspNowOnly();
-            now->resume(false);
+            now->resume();
             portalOpen = false;
         }
     }

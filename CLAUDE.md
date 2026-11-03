@@ -31,17 +31,20 @@ There is no test suite. `pytest_hello_world.py` is leftover ESP-IDF template cod
 
 **Captive portal (`AP`, `DNS_Server`, `HTTP_Server`).** All three parts are needed for the sign-in popup: DHCP hands out our IP (192.168.1.150) as DNS and sets option 114, `DNS_Server` answers every A query with that IP, and the HTTP 404 handler redirects unknown URLs (OS connectivity probes) to `/`.
 
-**Web UI (`main/HTML/`).** Embedded into the binary via `EMBED_FILES` in `main/CMakeLists.txt`, and new source files must be added there too. The page polls `GET /getStats` once a second and draws the chart client-side, so history starts when the page opens. Settings go through `/getSettings` and `/setSettings`; the handshake is `POST /connectGenerator`.
+**Web UI (`main/HTML/`).** Embedded into the binary via `EMBED_FILES` in `main/CMakeLists.txt`, and new source files must be added there too. The page polls `GET /getStats` once a second and draws the chart client-side, so history starts when the page opens. Settings go through `/getSettings` and `/setSettings`; the link test is `POST /testGenerator`.
 
 **Shared state.** `SharedData` (mutex) holds sensor stats and live settings, read by the HTTP handlers and written by the main loop. `ESP_NOW` keeps its own counters under a spinlock because its callbacks run in the Wi-Fi task. Saving settings takes effect immediately, with no reboot.
 
 **Stored config.** NVS holds JSON like `{"treshold":"85.0","MAC":"aa:bb:.."}`. The misspelled key and string-typed values are the on-flash format, so renaming them breaks existing devices.
 
-## Generator protocol constraints
+## Generator protocol
 
-The current `../dd-generator` firmware starts a long blocking tone on **every** ESP-NOW frame it receives, whatever the payload, and never sends anything. So:
+`main/ESP_NOW/Protocol.h` defines the wire format and must stay byte-identical to the copy in `../dd-generator`. `ESP_NOW` has three independent kinds of traffic:
 
-- Do not add heartbeats or other periodic frames; each one would trigger a tone.
-- Handshake retries stop at the first MAC-level ACK (`ESP_NOW::taskLoop`).
-- The handshake only reaches `Connected` once the generator sends a frame back, which needs a generator firmware change. Until then it ends in `NoReply`.
-- The generator cycles between a b/g/n AP phase and an LR-only phase, so handshake attempts alternate between 11b and LR rates during the AP window.
+- **Start triggers:** `sendOverEvent()` sends `Over\0`. The generator starts on frames beginning `Ov` from its configured detector. No session is needed.
+- **Session:** only the generator can start it, with `HELLO`. This side answers `HELLO_ACK` and streams `DATA` every 500 ms until 6 s after the last `HELLO`. The protocol has no invalid-value flag, so nothing is sent without a valid sensor reading, and the generator reports "No response".
+- **Link test (web button):** `HH`, repeated until a MAC-level ACK. The generator only counts it as traffic, so an ACK is all it proves.
+
+The session effectively ends when the portal closes: the LR-only radio does not hear the generator's default-rate `HELLO`s. Triggers keep working, since the generator's radio accepts LR. MACs: enter the generator's displayed MAC here. The generator accepts its configured detector MAC or that MAC + 1.
+
+User-facing instructions are in `docs/navod-na-pouzitie.md` (Slovak). Update them when device behavior changes.

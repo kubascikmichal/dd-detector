@@ -4,6 +4,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "dhcpserver/dhcpserver.h"
+#include "../ESP_NOW/Protocol.h"
 
 // DHCP option 114 keeps a pointer to this string, so it has to outlive the server.
 static char s_captive_uri[] = "http://" AP_IP_STR "/";
@@ -23,12 +24,12 @@ AP::AP(const char *ssid, const char *password)
     memset(&m_config, 0, sizeof(m_config));
     strlcpy((char *)m_config.ap.ssid, ssid, sizeof(m_config.ap.ssid));
     strlcpy((char *)m_config.ap.password, password, sizeof(m_config.ap.password));
-    m_config.ap.channel = WIFI_CHANNEL;
+    m_config.ap.channel = dd_proto::WIFI_CHANNEL;
     m_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
     m_config.ap.max_connection = 8; // CONFIG_LWIP_DHCPS_MAX_STATION_NUM
     m_config.ap.beacon_interval = 100;
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &m_config));
-    ESP_ERROR_CHECK(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_LR));
+    ESP_ERROR_CHECK(esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N));
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
